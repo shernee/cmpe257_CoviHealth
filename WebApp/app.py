@@ -5,6 +5,8 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import pandas as pd
 from dash import dcc
+from pipeline import *
+import plotly.graph_objs as go
 
 app = dash.Dash(__name__, external_stylesheets=['assets/style.css'])
 min_Value = 65
@@ -49,12 +51,12 @@ dataset_dropdown_label = "Select a Dataset to see the class distribution and the
 dataset_dropdown = dcc.Dropdown(
     id='dataset-dropdown',
     options=[
-        {'label': 'Dataset1', 'value': 'viz1'},
-        {'label': 'Dataset1 & Dataset2', 'value': 'viz1+viz2'},
-        {'label': 'Dataset1 & Dataset2 & Dataset3', 'value': 'viz1+viz2+viz3'}
+        {'label': 'Dataset1', 'value': 'viz_1.csv'},
+        {'label': 'Dataset1 & Dataset2', 'value': 'viz_2.csv'},
+        {'label': 'Dataset1 & Dataset2 & Dataset3', 'value': 'viz_3.csv'}
     ],
     className='dropdown-style',
-    value='viz1'
+    value='viz_1.csv'
 )
 
 
@@ -66,7 +68,11 @@ input_row_2 = html.Div(children=[
     dbc.Row([high_slider_input, mid_slider_input])
 ])
 
-output_row_1 = dcc.Graph(id='class-balance-graph')
+# output_row_1 = dcc.Graph(id='class-balance-graph')
+output_row_1 = html.Div(children=[
+    dcc.Graph(id='hist-plot')
+], style={'width': '50%'})
+
 
 
 app.layout = html.Div([
@@ -76,18 +82,24 @@ app.layout = html.Div([
 ])
 
 
-
 @app.callback(
-    dash.dependencies.Output('class-balance-graph', 'children'),
+    dash.dependencies.Output('hist-plot', 'figure'),
+    # dash.dependencies.Output('class-balance-graph', 'children'),
     [dash.dependencies.Input('high-slider', 'value'),
-     dash.dependencies.Input('mid-slider', 'value')])
-def update_output(infection_rate_high, infection_rate_mid):
+     dash.dependencies.Input('mid-slider', 'value'),
+     dash.dependencies.Input('dataset-dropdown', 'value')])
+def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
     range1_min = round((infection_rate_high[0] / 100) * (max_value - min_Value) + min_Value, 2)
     range1_max = round((infection_rate_high[1] / 100) * (max_value - min_Value) + min_Value, 2)
     range2_min = round((infection_rate_mid[0] / 100) * (max_value - min_value) + min_value, 2)
     range2_max = round((infection_rate_mid[1] / 100) * (max_value - min_value) + min_value, 2)
-
-    return f'infection_rate_high: {range1_min}% to {range1_max}% \ninfection_rate_mid: {range2_min}% to {range2_max}%'
+    X_res, y_res = oversample(range1_max, range2_max, selected_dataset)
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x=y_res, nbinsx=3))
+    fig.update_layout(title='Class Distribution')
+    
+    return fig
+    # return f'infection_rate_high: {range1_min}% to {range1_max}% \ninfection_rate_mid: {range2_min}% to {range2_max}%'
 
 if __name__ == "__main__":
     app.run_server(debug=True)
