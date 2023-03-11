@@ -7,9 +7,6 @@ import pandas as pd
 from dash import dcc
 from pipeline import *
 import plotly.graph_objs as go
-# import dash_table
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 app = dash.Dash(__name__, external_stylesheets=['assets/style.css'])
 min_Value = 65
@@ -73,8 +70,9 @@ feature_dropdown = dcc.Dropdown(
         'calorie_per_capita_milk_excluding_butter',
     ],
     className='dropdown-style',
-    # value='protein_per_capita_milk_excluding_butter'
+    value='protein_per_capita_milk_excluding_butter'
 )
+
 
 input_row_1 = html.Div(children=[
     html.Label(dataset_dropdown_label, htmlFor=dataset_dropdown_label),
@@ -83,8 +81,6 @@ input_row_1 = html.Div(children=[
 input_row_2 = html.Div(children=[
     dbc.Row([high_slider_input, mid_slider_input])
 ])
-
-
 
 # output_row_1 = dcc.Graph(id='class-balance-graph')
 output_row_1 = html.Div(children=[
@@ -102,32 +98,12 @@ output_row_3 = html.Div(children=[
     dcc.Graph(id='feature-distribution-histogram')
 ], style={'width': '50%'})
 
-confusion_matrix_label = "The confusion matrix of the selected dataset and features"
-confusion_matrix_output = html.Div([
-        html.Table(id='confusion-matrix', children=[
-        ])
-])
-# confusion_matrix_output = html.Div([
-#     dcc.Graph(id='confusion_matrix')
-# ], style={'width': '50%'})
-
-# confusion_matrix_output = html.Div([dash_table.DataTable(id='confusion-matrix',style_cell={'textAlign': 'center'},        
-#                             style_header={'backgroundColor': 'rgb(230, 230, 230)','fontWeight': 'bold'})
-#  ] )
-
-classifier_output = html.Div(children=[
-    html.Div(id='output_classifier')
-])
-
 app.layout = html.Div([
     input_row_1,
     input_row_2,
     output_row_1,
     output_row_2,
-    output_row_3,
-    classifier_output,
-    confusion_matrix_output
-    
+    output_row_3
 ])
 
 
@@ -136,10 +112,6 @@ app.layout = html.Div([
         Output('class-balance-histogram', 'figure'),
         Output('feature-dropdown', 'options'),
         Output('feature-dropdown', 'value'),
-        # Output('confusion-matrix', 'data'),
-        # Output('confusion-matrix', 'columns'),
-        Output('output_classifier','children'),
-        Output('confusion-matrix','children')
     ],
     [
         Input('high-slider', 'value'),
@@ -155,28 +127,12 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
     df = pd.read_csv(selected_dataset)
     DATAFRAME = df
 
-    f1, cf, y_counts, y, top3, classifier = controller(range1_max, range2_max, df)
+    y_res, top3 = controller(range1_max, range2_max, df)
     fig = go.Figure()
-    fig.add_trace(go.Histogram(x=y, nbinsx=3))
+    fig.add_trace(go.Histogram(x=y_res, nbinsx=3))
     fig.update_layout(title='Class Distribution')
     
-    children=[  html.Table([html.Tr([html.Th('Confusion Matrix')]),
-                html.Tr([html.Td('True Class'), html.Td('Predicted Class'), html.Td('Count')]),
-                html.Tr([html.Td('Class low'), html.Td('Class low'), html.Td(cf[0][0])]),
-                html.Tr([html.Td('Class low'), html.Td('Class mid'), html.Td(cf[0][1])]),
-                html.Tr([html.Td('Class low'), html.Td('Class high'), html.Td(cf[0][2])]),
-                html.Tr([html.Td('Class mid'), html.Td('Class low'), html.Td(cf[1][0])]),
-                html.Tr([html.Td('Class mid'), html.Td('Class mid'), html.Td(cf[1][1])]),
-                html.Tr([html.Td('Class mid'), html.Td('Class high'), html.Td(cf[1][2])]),
-                html.Tr([html.Td('Class high'), html.Td('Class low'), html.Td(cf[2][0])]),
-                html.Tr([html.Td('Class high'), html.Td('Class mid'), html.Td(cf[2][1])]),
-                html.Tr([html.Td('Class high'), html.Td('Class high'), html.Td(cf[2][2])])
-            ])
-        ]
-    
-
-    return fig, top3, top3[0], f'Best Classifier: {classifier} with F1- weighted score {f1}', children
-
+    return fig, top3, top3[0]
     # return f'infection_rate_high: {range1_min}% to {range1_max}% \ninfection_rate_mid: {range2_min}% to {range2_max}%'
 
 @app.callback(
