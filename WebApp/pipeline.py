@@ -113,6 +113,15 @@ def choose_best_classifier(X, y, classifier_name, classifiers):
 def controller(mod_percent, high_percent, df):
   X, y = oversample(mod_percent, high_percent, df)
   top3, top10 = top_features(X, y)
+  classifier = choose_best_classifier(X, y, classifier_name, classifiers)
 
+  idx = classifier_name.index(classifier)
 
-  return y, top3
+  model = classifiers[idx]
+  model.fit(X, y)
+  pred = model.predict(X)
+
+  f1 = f1_score(y, pred, average='weighted')
+  cf = confusion_matrix(y, pred)
+  print(cf)
+  return f1, cf, y.value_counts(), y, top3, classifier
