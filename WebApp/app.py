@@ -10,6 +10,8 @@ import plotly.graph_objs as go
 # import dash_table
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy import stats
+import plotly.figure_factory as ff
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 MIN_VALUE_HIGH = 65
@@ -102,7 +104,7 @@ feature_dropdown_input = dbc.Col([
     feature_dropdown
 ], className='component-style')
 feature_distribution_graph = html.Div(children=[
-    dcc.Graph(id='feature-distribution-histogram')
+    dcc.Graph(id='feature-distribution-curve')
 ])
 output_row_2 = dbc.Row([
     dbc.Col(feature_dropdown_input, width=5),
@@ -183,18 +185,14 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
 
 # callback 2
 @app.callback(
-        Output('feature-distribution-histogram', 'figure'),
+        Output('feature-distribution-curve', 'figure'),
         Input('feature-dropdown', 'value')
 )
 def update_output(selected_feature):
     x = DATAFRAME[selected_feature]
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(x=x))
+    fig = ff.create_distplot([x], ['Feature Distribution'], bin_size=0.5, curve_type='kde')
     fig.update_layout(title='Feature Distribution')
-    
     return fig
-
-
 
 if __name__ == "__main__":
     app.run_server(debug=True)
