@@ -27,7 +27,7 @@ CLASS_LABELS = ['Low', 'Moderate', 'High']
 
 # components for output row 1
 high_slider_label = "Infection Rate High:"
-high_slider =dcc.RangeSlider(
+high_slider = dcc.RangeSlider(
     id='high-slider',
     min=0,
     max=100,
@@ -41,8 +41,8 @@ high_slider_input = dbc.Col([
     high_slider
 ], className='component-style')
 
-mid_slider_label = "Infection Rate Mid:" 
-mid_slider= dcc.RangeSlider(
+mid_slider_label = "Infection Rate Moderate :" 
+mid_slider = dcc.RangeSlider(
     id='mid-slider',
     min=0,
     max=100,
@@ -56,7 +56,7 @@ mid_slider_input = dbc.Col([
     mid_slider
 ], className='component-style')
 
-dataset_dropdown_label = "Select a Dataset to see the class distribution and the top features"
+dataset_dropdown_label = "Select a Dataset"
 dataset_dropdown = dcc.Dropdown(
     id='dataset-dropdown',
     options=[
@@ -96,7 +96,6 @@ feature_dropdown = dcc.Dropdown(
         'calorie_per_capita_milk_excluding_butter',
     ],
     className='dropdown-style',
-    # value='protein_per_capita_milk_excluding_butter'
 )
 
 feature_dropdown_input = dbc.Col([
@@ -126,11 +125,22 @@ output_row_3 = dbc.Row([
 ], className='row-style')
 
 
+# components for output row 4
+classifier_geoplot = html.Div(children=[
+    dcc.Graph(id='classification-geoplot')
+])
+
+output_row_4 = dbc.Row([
+    dbc.Col(classifier_geoplot, width=5)
+], className='row-style')
+
+
 # page layout
 app.layout = html.Div([
     output_row_1,
     output_row_2,
     output_row_3,
+    output_row_4
 ])
 
 
@@ -143,13 +153,15 @@ app.layout = html.Div([
         Output('feature-dropdown', 'options'),
         Output('feature-dropdown', 'value'),
         Output('classifier-output', 'children'),
-        Output('confusion-matrix','figure')
+        Output('confusion-matrix','figure'),
+        Output('classification-geoplot', 'figure')
     ],
     [
         Input('high-slider', 'value'),
         Input('mid-slider', 'value'),
         Input('dataset-dropdown', 'value')
     ])
+
 def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
     range1_min = round((infection_rate_high[0] / 100) * (MAX_VALUE - MIN_VALUE_HIGH) + MIN_VALUE_HIGH, 2)
     range1_max = round((infection_rate_high[1] / 100) * (MAX_VALUE - MIN_VALUE_HIGH) + MIN_VALUE_HIGH, 2)
@@ -160,7 +172,7 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
     DATAFRAME = df
     n = NUM_FEATURES_MAP[selected_dataset]
 
-    f1, conf_matrix, class_feature, top3_features, classifier = controller(range1_max, range2_max, df, n)
+    f1, conf_matrix, class_feature, top3_features, classifier, predictions = controller(range1_max, range2_max, df, n)
     hist_fig = go.Figure()
     hist_fig.add_trace(go.Histogram(x=class_feature, nbinsx=3))
     hist_fig.update_layout(title='Class Distribution')
@@ -171,15 +183,27 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
         labels=dict(x="Predicted label", y="True label"), 
         x=CLASS_LABELS, 
         y=CLASS_LABELS,
-        title="Confusion matrix"
+        title='Confusion matrix'
     )
+
+    # Classification geoplot
+    predictions['pred'] = predictions['pred'].replace({'Low':0, 'Moderate':1, 'High':2})
+    data = dict(type = 'choropleth', 
+            locations = predictions['area'], 
+            z = predictions['pred'], 
+            locationmode='country names',
+            colorbar = dict(title='Infection levels', tickvals=[0, 1, 2], ticktext=['Low', 'Moderate', 'High']),)
+    layout = dict(title = 'Infection level classification', height=700, width= 1000)
+    geo_fig = go.Figure(data = [data], 
+              layout = layout)
 
     return (
         hist_fig, 
         top3_features, 
         top3_features[0], 
         f'Best Classifier: {classifier} with F1- weighted score {f1:.2f}', 
-        heatmap_fig
+        heatmap_fig,
+        geo_fig
     )
 
 
