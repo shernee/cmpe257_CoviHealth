@@ -17,6 +17,9 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 MIN_VALUE_HIGH = 65
 MIN_VALUE_MID = 26
 MAX_VALUE = 88
+min_value_slider = 0
+max_value_slider = 100
+step_size = 10
 DATAFRAME = pd.read_csv('viz_1.csv')
 NUM_FEATURES_MAP = {
     'viz_1.csv': 6,
@@ -27,36 +30,47 @@ CLASS_LABELS = ['Low', 'Moderate', 'High']
 
 # components for output row 1
 high_slider_label = "Infection Rate High:"
-high_slider = dcc.RangeSlider(
+high_slider =dcc.RangeSlider(
     id='high-slider',
-    min=0,
-    max=100,
-    step=10,
-    value=[0, 0],
-    marks={i: f'{i}%' for i in range(0, 110, 10)},
+    min=min_value_slider,
+    max=max_value_slider,
+    value=[min_value_slider],
+    step=None,
+    marks={i: f'{i}%' for i in range(0, 101, step_size)},
+    vertical=False,
+    verticalHeight=500,
+    included=False,
+    updatemode='drag',
     className='slider-style',
+    tooltip={'always_visible': False}
 )
 high_slider_input = dbc.Col([
     html.Label(high_slider_label, htmlFor=high_slider_label),
     high_slider
 ], className='component-style')
 
-mid_slider_label = "Infection Rate Moderate :" 
+mid_slider_label = "Infection Rate Mid:" 
 mid_slider = dcc.RangeSlider(
     id='mid-slider',
-    min=0,
-    max=100,
-    step=10,
-    value=[0, 0],
-    marks={i: f'{i}%' for i in range(0, 110, 10)},
-    className='slider-style',       
+    min=min_value_slider,
+    max=max_value_slider,
+    value=[min_value_slider],
+    step=None,
+    marks={i: f'{i}%' for i in range(0, 101, step_size)},
+    vertical=False,
+    verticalHeight=500,
+    included=False,
+    updatemode='drag',
+    className='slider-style', 
+    tooltip={'always_visible': False},
+
 )
 mid_slider_input = dbc.Col([
-    html.Label(mid_slider_label, htmlFor=mid_slider_label) ,
+    html.Label(mid_slider_label, htmlFor=mid_slider_label),
     mid_slider
 ], className='component-style')
 
-dataset_dropdown_label = "Select a Dataset"
+dataset_dropdown_label = "Select a Dataset to see the class distribution and the top features"
 dataset_dropdown = dcc.Dropdown(
     id='dataset-dropdown',
     options=[
@@ -96,6 +110,7 @@ feature_dropdown = dcc.Dropdown(
         'calorie_per_capita_milk_excluding_butter',
     ],
     className='dropdown-style',
+    # value='protein_per_capita_milk_excluding_butter'
 )
 
 feature_dropdown_input = dbc.Col([
@@ -124,7 +139,6 @@ output_row_3 = dbc.Row([
     dbc.Col(classifier_conf_matrix, width=5)
 ], className='row-style')
 
-
 # components for output row 4
 classifier_geoplot = html.Div(children=[
     dcc.Graph(id='classification-geoplot')
@@ -145,7 +159,6 @@ app.layout = html.Div([
 
 
 # callbacks
-
 # callback 1
 @app.callback(
     [
@@ -161,21 +174,39 @@ app.layout = html.Div([
         Input('mid-slider', 'value'),
         Input('dataset-dropdown', 'value')
     ])
-
 def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
-    range1_min = round((infection_rate_high[0] / 100) * (MAX_VALUE - MIN_VALUE_HIGH) + MIN_VALUE_HIGH, 2)
-    range1_max = round((infection_rate_high[1] / 100) * (MAX_VALUE - MIN_VALUE_HIGH) + MIN_VALUE_HIGH, 2)
-    range2_min = round((infection_rate_mid[0] / 100) * (MAX_VALUE - MIN_VALUE_MID) + MIN_VALUE_MID, 2)
-    range2_max = round((infection_rate_mid[1] / 100) * (MAX_VALUE - MIN_VALUE_MID) + MIN_VALUE_MID, 2)
+
+    high_samples_increase = MIN_VALUE_HIGH + infection_rate_high[0]/100 * (MAX_VALUE - MIN_VALUE_HIGH)
+    mid_samples_increase = MIN_VALUE_MID + infection_rate_mid[0]/100 * (MAX_VALUE - MIN_VALUE_MID)
 
     df = pd.read_csv(selected_dataset)
     DATAFRAME = df
     n = NUM_FEATURES_MAP[selected_dataset]
 
-    f1, conf_matrix, class_feature, top3_features, classifier, predictions = controller(range1_max, range2_max, df, n)
-    hist_fig = go.Figure()
-    hist_fig.add_trace(go.Histogram(x=class_feature, nbinsx=3))
-    hist_fig.update_layout(title='Class Distribution')
+    f1, conf_matrix, X, class_feature, top3_features, classifier, predictions = controller(mid_samples_increase,high_samples_increase, df, n)
+    class_labels = class_feature.to_list()
+    label_dict = {label: i for i, label in enumerate(['Low', 'Moderate', 'High'])}
+    histogram_trace = go.Histogram(
+        x=class_labels, 
+        nbinsx=3, 
+        marker_color='blue',
+        )
+    
+    layout = go.Layout(
+        xaxis=dict(
+        ticktext=['Low', 'Moderate', 'High'],
+        tickvals=[label_dict[label] for label in ['Low', 'High', 'Moderate']],
+        title='Class Distribution'
+        ),
+        yaxis=dict(
+         title='Total number of Samples'
+        )
+    )
+
+# create figure with histogram trace and layout
+    hist_fig = go.Figure(data=[histogram_trace], layout=layout)
+
+# show figure
 
     heatmap_fig = px.imshow(
         conf_matrix, 
@@ -183,7 +214,7 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
         labels=dict(x="Predicted label", y="True label"), 
         x=CLASS_LABELS, 
         y=CLASS_LABELS,
-        title='Confusion matrix'
+        title="Confusion matrix"
     )
 
     # Classification geoplot
