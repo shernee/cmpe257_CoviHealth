@@ -17,6 +17,7 @@ viz1 = pd.read_csv('viz_1.csv')
 initial_low = viz1['infection_level'].value_counts()[0]
 initial_mod = viz1['infection_level'].value_counts()[2]
 initial_high = viz1['infection_level'].value_counts()[1]
+CLASS_LABELS = ['Low', 'Moderate', 'High']
 
 classifier_name = [
     'Gaussian Naive Bayes',
@@ -79,17 +80,18 @@ def oversample(mod_percent, high_percent, df):
 
   return X_res, y_res
 
-def top_features(X: pd.DataFrame, y:pd.Series):
-  # X_scaled = scaling(X)
+def top_features(X: pd.DataFrame, y:pd.Series, n:int):
+  # using GINI importance to get top n features
   rf_clf = RandomForestClassifier(min_samples_split=5, random_state=1)
   rf_clf.fit(X, y)
 
   imp_features = pd.Series(data=rf_clf.feature_importances_, index=X.columns).sort_values(ascending=False)
 
+  # n is based on the select k best score > .25
   top3 = list(imp_features.index[:3])
-  top10 = list(imp_features.index[:10])
+  topn = list(imp_features.index[:n])
 
-  return top3, top10
+  return top3, topn
 
 def choose_best_classifier(X, y, classifier_name, classifiers):
 
@@ -109,11 +111,11 @@ def choose_best_classifier(X, y, classifier_name, classifiers):
 
   return classifier_name
 
-def controller(mod_percent, high_percent, df):
+def controller(mod_percent, high_percent, df, n):
   X, y = oversample(mod_percent, high_percent, df)
-  top3, top10 = top_features(X, y)
-  # TODO: use top 10 features for classification?
-  classifier = choose_best_classifier(X, y, classifier_name, classifiers) 
+  top3, topn = top_features(X, y, n)
+  
+  classifier = choose_best_classifier(X[topn], y, classifier_name, classifiers) 
 
   idx = classifier_name.index(classifier)
 
@@ -122,7 +124,7 @@ def controller(mod_percent, high_percent, df):
   pred = model.predict(X)
 
   f1 = f1_score(y, pred, average='weighted')
-  # TODO: find the order of labels low, mid, high?
-  cf = confusion_matrix(y, pred)
+
+  cf = confusion_matrix(y, pred, labels=CLASS_LABELS)
   # print(cf)
   return f1, cf, y, top3, classifier
