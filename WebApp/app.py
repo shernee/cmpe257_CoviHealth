@@ -12,10 +12,16 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-min_Value = 65
-min_value = 26
-max_value = 88
+MIN_VALUE_HIGH = 65
+MIN_VALUE_MID = 26
+MAX_VALUE = 88
 DATAFRAME = pd.read_csv('viz_1.csv')
+NUM_FEATURES_MAP = {
+    'viz_1.csv': 6,
+    'viz_2.csv': 8,
+    'viz_3.csv': 10
+}
+CLASS_LABELS = ['Low', 'Moderate', 'High']
 
 # components for output row 1
 high_slider_label = "Infection Rate High:"
@@ -106,8 +112,7 @@ output_row_2 = dbc.Row([
 
 # componenets for output row 3
 classifier_conclusion = html.Div(children=[
-    html.Div(id='classifier-output')
-], className='component-style')
+], id='classifier-output', className='component-style')
 
 classifier_conf_matrix = html.Div(children=[
     dcc.Graph(id='confusion-matrix')
@@ -144,30 +149,36 @@ app.layout = html.Div([
         Input('dataset-dropdown', 'value')
     ])
 def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
-    range1_min = round((infection_rate_high[0] / 100) * (max_value - min_Value) + min_Value, 2)
-    range1_max = round((infection_rate_high[1] / 100) * (max_value - min_Value) + min_Value, 2)
-    range2_min = round((infection_rate_mid[0] / 100) * (max_value - min_value) + min_value, 2)
-    range2_max = round((infection_rate_mid[1] / 100) * (max_value - min_value) + min_value, 2)
+    range1_min = round((infection_rate_high[0] / 100) * (MAX_VALUE - MIN_VALUE_HIGH) + MIN_VALUE_HIGH, 2)
+    range1_max = round((infection_rate_high[1] / 100) * (MAX_VALUE - MIN_VALUE_HIGH) + MIN_VALUE_HIGH, 2)
+    range2_min = round((infection_rate_mid[0] / 100) * (MAX_VALUE - MIN_VALUE_MID) + MIN_VALUE_MID, 2)
+    range2_max = round((infection_rate_mid[1] / 100) * (MAX_VALUE - MIN_VALUE_MID) + MIN_VALUE_MID, 2)
 
     df = pd.read_csv(selected_dataset)
     DATAFRAME = df
+    n = NUM_FEATURES_MAP[selected_dataset]
 
-    f1, conf_matrix, class_feature, top3_features, classifier = controller(range1_max, range2_max, df)
+    f1, conf_matrix, class_feature, top3_features, classifier = controller(range1_max, range2_max, df, n)
     hist_fig = go.Figure()
     hist_fig.add_trace(go.Histogram(x=class_feature, nbinsx=3))
     hist_fig.update_layout(title='Class Distribution')
 
-    classes = ['low', 'mid', 'high']
     heatmap_fig = px.imshow(
         conf_matrix, 
         text_auto=True, 
-        labels=dict(x="predicted", y="actual"), 
-        x=classes, 
-        y=classes,
+        labels=dict(x="Predicted label", y="True label"), 
+        x=CLASS_LABELS, 
+        y=CLASS_LABELS,
         title="Confusion matrix"
     )
 
-    return hist_fig, top3_features, top3_features[0], f'Best Classifier: {classifier} with F1- weighted score {f1:.2f}', heatmap_fig
+    return (
+        hist_fig, 
+        top3_features, 
+        top3_features[0], 
+        f'Best Classifier: {classifier} with F1- weighted score {f1:.2f}', 
+        heatmap_fig
+    )
 
 
 # callback 2
