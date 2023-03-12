@@ -6,7 +6,6 @@ from sklearn.model_selection import cross_validate
 from sklearn.preprocessing import MinMaxScaler
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import f1_score, confusion_matrix
-#import holoviews as hv
 
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -113,7 +112,8 @@ def choose_best_classifier(X, y, classifier_name, classifiers):
 def controller(mod_percent, high_percent, df):
   X, y = oversample(mod_percent, high_percent, df)
   top3, top10 = top_features(X, y)
-  classifier = choose_best_classifier(X, y, classifier_name, classifiers)
+  # TODO: use top 10 features for classification?
+  classifier = choose_best_classifier(X, y, classifier_name, classifiers) 
 
   idx = classifier_name.index(classifier)
 
@@ -122,6 +122,7 @@ def controller(mod_percent, high_percent, df):
   pred = model.predict(X)
 
   f1 = f1_score(y, pred, average='weighted')
+  # TODO: find the order of labels low, mid, high?
   cf = confusion_matrix(y, pred)
-  print(cf)
-  return f1, cf, y.value_counts(), y, top3, classifier
+  # print(cf)
+  return f1, cf, y, top3, classifier
