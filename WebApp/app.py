@@ -11,45 +11,42 @@ import plotly.graph_objs as go
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-app = dash.Dash(__name__, external_stylesheets=['assets/style.css'])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 min_Value = 65
 min_value = 26
 max_value = 88
 DATAFRAME = pd.read_csv('viz_1.csv')
 
+# components for output row 1
 high_slider_label = "Infection Rate High:"
 high_slider =dcc.RangeSlider(
-        id='high-slider',
-        min=0,
-        max=100,
-        step=10,
-        value=[0, 0],
-        marks={i: f'{i}%' for i in range(0, 110, 10)},
-        className='slider-style',
-    )
-high_slider_input = dbc.Col(
-    html.Div(children=[
-        html.Label(high_slider_label, htmlFor=high_slider_label),
-        high_slider
-    ])
+    id='high-slider',
+    min=0,
+    max=100,
+    step=10,
+    value=[0, 0],
+    marks={i: f'{i}%' for i in range(0, 110, 10)},
+    className='slider-style',
 )
+high_slider_input = dbc.Col([
+    html.Label(high_slider_label, htmlFor=high_slider_label),
+    high_slider
+], className='component-style')
 
 mid_slider_label = "Infection Rate Mid:" 
 mid_slider= dcc.RangeSlider(
-        id='mid-slider',
-        min=0,
-        max=100,
-        step=10,
-        value=[0, 0],
-        marks={i: f'{i}%' for i in range(0, 110, 10)},
-        className='slider-style',       
+    id='mid-slider',
+    min=0,
+    max=100,
+    step=10,
+    value=[0, 0],
+    marks={i: f'{i}%' for i in range(0, 110, 10)},
+    className='slider-style',       
 )
-mid_slider_input = dbc.Col(
-    html.Div(children=[
-        html.Label(mid_slider_label, htmlFor=mid_slider_label) ,
-        mid_slider
-    ])
-)
+mid_slider_input = dbc.Col([
+    html.Label(mid_slider_label, htmlFor=mid_slider_label) ,
+    mid_slider
+], className='component-style')
 
 dataset_dropdown_label = "Select a Dataset to see the class distribution and the top features"
 dataset_dropdown = dcc.Dropdown(
@@ -62,8 +59,26 @@ dataset_dropdown = dcc.Dropdown(
     className='dropdown-style',
     value='viz_1.csv'
 )
+dataset_dropdown_input = dbc.Col([
+    html.Label(dataset_dropdown_label, htmlFor=dataset_dropdown_label),
+    dataset_dropdown
+], className='component-style')
+
+input_col = dbc.Col([
+    dataset_dropdown_input,
+    mid_slider_input,
+    high_slider_input
+])
+class_distribution_graph = html.Div(children=[
+    dcc.Graph(id='class-balance-histogram')
+])
+output_row_1 = dbc.Row([
+        dbc.Col(input_col, width=5),
+        dbc.Col(class_distribution_graph, width=5)
+], className='row-style')
 
 
+# components for output row 2
 feature_dropdown_label = "Select feature to see its distribution"
 feature_dropdown = dcc.Dropdown(
     id='feature-dropdown',
@@ -76,64 +91,52 @@ feature_dropdown = dcc.Dropdown(
     # value='protein_per_capita_milk_excluding_butter'
 )
 
-input_row_1 = html.Div(children=[
-    html.Label(dataset_dropdown_label, htmlFor=dataset_dropdown_label),
-    dataset_dropdown
-])
-input_row_2 = html.Div(children=[
-    dbc.Row([high_slider_input, mid_slider_input])
-])
-
-
-
-# output_row_1 = dcc.Graph(id='class-balance-graph')
-output_row_1 = html.Div(children=[
-    dcc.Graph(id='class-balance-histogram')
-], style={'width': '50%'})
-
-output_row_2 = html.Div(
-    children=[
+feature_dropdown_input = dbc.Col([
     html.Label(feature_dropdown_label, htmlFor=feature_dropdown_label),
     feature_dropdown
-    ]
-)
-
-output_row_3 = html.Div(children=[
+], className='component-style')
+feature_distribution_graph = html.Div(children=[
     dcc.Graph(id='feature-distribution-histogram')
-], style={'width': '50%'})
+])
+output_row_2 = dbc.Row([
+    dbc.Col(feature_dropdown_input, width=5),
+    dbc.Col(feature_distribution_graph, width=5)
+], className='row-style')
 
-confusion_matrix_label = "The confusion matrix of the selected dataset and features"
-confusion_matrix_output = html.Div([
-        html.Table(id='confusion-matrix', children=[
-        ])
+
+# componenets for output row 3
+classifier_conclusion = html.Div(children=[
+    html.Div(id='classifier-output')
+], className='component-style')
+
+classifier_conf_matrix = html.Div(children=[
+    dcc.Graph(id='confusion-matrix')
 ])
 
+output_row_3 = dbc.Row([
+    dbc.Col(classifier_conclusion, width=5),
+    dbc.Col(classifier_conf_matrix, width=5)
+], className='row-style')
 
-classifier_output = html.Div(children=[
-    html.Div(id='output_classifier')
-])
 
+# page layout
 app.layout = html.Div([
-    input_row_1,
-    input_row_2,
     output_row_1,
     output_row_2,
     output_row_3,
-    classifier_output,
-    confusion_matrix_output
-    
 ])
 
 
+# callbacks
+
+# callback 1
 @app.callback(
     [
         Output('class-balance-histogram', 'figure'),
         Output('feature-dropdown', 'options'),
         Output('feature-dropdown', 'value'),
-        # Output('confusion-matrix', 'data'),
-        # Output('confusion-matrix', 'columns'),
-        Output('output_classifier','children'),
-        Output('confusion-matrix','children')
+        Output('classifier-output', 'children'),
+        Output('confusion-matrix','figure')
     ],
     [
         Input('high-slider', 'value'),
@@ -149,30 +152,25 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
     df = pd.read_csv(selected_dataset)
     DATAFRAME = df
 
-    f1, cf, y_counts, y, top3, classifier = controller(range1_max, range2_max, df)
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(x=y, nbinsx=3))
-    fig.update_layout(title='Class Distribution')
-    
-    children=[  html.Table([html.Tr([html.Th('Confusion Matrix')]),
-                html.Tr([html.Td('True Class'), html.Td('Predicted Class'), html.Td('Count')]),
-                html.Tr([html.Td('Class low'), html.Td('Class low'), html.Td(cf[0][0])]),
-                html.Tr([html.Td('Class low'), html.Td('Class mid'), html.Td(cf[0][1])]),
-                html.Tr([html.Td('Class low'), html.Td('Class high'), html.Td(cf[0][2])]),
-                html.Tr([html.Td('Class mid'), html.Td('Class low'), html.Td(cf[1][0])]),
-                html.Tr([html.Td('Class mid'), html.Td('Class mid'), html.Td(cf[1][1])]),
-                html.Tr([html.Td('Class mid'), html.Td('Class high'), html.Td(cf[1][2])]),
-                html.Tr([html.Td('Class high'), html.Td('Class low'), html.Td(cf[2][0])]),
-                html.Tr([html.Td('Class high'), html.Td('Class mid'), html.Td(cf[2][1])]),
-                html.Tr([html.Td('Class high'), html.Td('Class high'), html.Td(cf[2][2])])
-            ])
-        ]
-    
+    f1, conf_matrix, class_feature, top3_features, classifier = controller(range1_max, range2_max, df)
+    hist_fig = go.Figure()
+    hist_fig.add_trace(go.Histogram(x=class_feature, nbinsx=3))
+    hist_fig.update_layout(title='Class Distribution')
 
-    return fig, top3, top3[0], f'Best Classifier: {classifier} with F1- weighted score {f1}', children
+    classes = ['low', 'mid', 'high']
+    heatmap_fig = px.imshow(
+        conf_matrix, 
+        text_auto=True, 
+        labels=dict(x="predicted", y="actual"), 
+        x=classes, 
+        y=classes,
+        title="Confusion matrix"
+    )
 
-    # return f'infection_rate_high: {range1_min}% to {range1_max}% \ninfection_rate_mid: {range2_min}% to {range2_max}%'
+    return hist_fig, top3_features, top3_features[0], f'Best Classifier: {classifier} with F1- weighted score {f1:.2f}', heatmap_fig
 
+
+# callback 2
 @app.callback(
         Output('feature-distribution-histogram', 'figure'),
         Input('feature-dropdown', 'value')
@@ -184,6 +182,8 @@ def update_output(selected_feature):
     fig.update_layout(title='Feature Distribution')
     
     return fig
+
+
 
 if __name__ == "__main__":
     app.run_server(debug=True)
