@@ -140,11 +140,14 @@ output_row_3 = dbc.Row([
 ], className='row-style')
 
 # components for output row 4
+
+geoplot_title = html.Div('Geoplot showing countries labeled based on the Infection Level')
 classifier_geoplot = html.Div(children=[
     dcc.Graph(id='classification-geoplot')
 ])
 
 output_row_4 = dbc.Row([
+    dbc.Col(geoplot_title, width=5),
     dbc.Col(classifier_geoplot, width=5)
 ], className='row-style')
 
@@ -186,12 +189,13 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
     f1, conf_matrix, X, class_feature, top3_features, classifier, predictions = controller(mid_samples_increase,high_samples_increase, df, n)
     class_labels = class_feature.to_list()
     label_dict = {label: i for i, label in enumerate(['Low', 'Moderate', 'High'])}
+
+    # class distribution plot
     histogram_trace = go.Histogram(
         x=class_labels, 
         nbinsx=3, 
         marker_color='blue',
-        )
-    
+        )   
     layout = go.Layout(
         xaxis=dict(
         ticktext=['Low', 'Moderate', 'High'],
@@ -202,12 +206,9 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
          title='Total number of Samples'
         )
     )
-
-# create figure with histogram trace and layout
     hist_fig = go.Figure(data=[histogram_trace], layout=layout)
 
-# show figure
-
+    # confusion matrix heatmap
     heatmap_fig = px.imshow(
         conf_matrix, 
         text_auto=True, 
@@ -224,7 +225,7 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
             z = predictions['pred'], 
             locationmode='country names',
             colorbar = dict(title='Infection levels', tickvals=[0, 1, 2], ticktext=['Low', 'Moderate', 'High']),)
-    layout = dict(title = 'Infection level classification', height=700, width= 1000)
+    layout = dict(height=800, width= 800, margin=dict(autoexpand=True))
     geo_fig = go.Figure(data = [data], 
               layout = layout)
 
@@ -245,6 +246,8 @@ def update_output(infection_rate_high, infection_rate_mid, selected_dataset):
 )
 def update_output(selected_feature):
     x = DATAFRAME[selected_feature]
+
+    # feature distribution plot
     fig = ff.create_distplot([x], ['Feature Distribution'], bin_size=0.5, curve_type='kde')
     fig.update_layout(title='Feature Distribution')
     return fig
